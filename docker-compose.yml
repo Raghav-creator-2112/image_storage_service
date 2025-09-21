@@ -1,0 +1,30 @@
+services:
+  localstack:
+    image: localstack/localstack:stable
+    ports:
+      - "4566:4566"
+      - "8080:8080"  # Web UI
+    environment:
+      - SERVICES=s3,dynamodb
+      - DEBUG=1
+      - LS_WEB=1
+    volumes:
+      - ./localstack:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  api:
+    build: .
+    image: image-storage
+    depends_on:
+      - localstack
+    env_file:
+      - .env
+    environment:
+      # Override endpoint to use compose service DNS inside the network
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      # Provide defaults if not set
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
